@@ -66,8 +66,6 @@ $old_error_handler = set_error_handler("ErrorHandler");
 //error_reporting(E_ALL);
 
 //ini_set('zlib.output_compression', 0);
-require 'vendor/autoload.php';
-use PHPMailer\PHPMailer\PHPMailer;
 
 $allowed_hosts = array('172.31.9.201', '34.234.225.210');
 if(substr_count( $_SERVER["HTTP_ACCEPT_ENCODING"] , "gzip" ) )
@@ -96,71 +94,6 @@ Flight::route( "/" , function(){
 die( "err.index" ); });
 # ]
 
-
-# ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••• [ _FORGOT
-function configureMail() {
-
-    $config = include '../../cghost/hid/config/mail.php';
-
-    $mail = new PHPMailer(true);
-    $mail->isSMTP();
-    $mail->Host = $config['smtp_host'];
-    $mail->Port = $config['smtp_port'];
-    $mail->SMTPAuth = true;
-    $mail->Username = $config['smtp_username'];
-    $mail->Password = $config['smtp_password'];
-    $mail->SMTPSecure = 'tls';
-
-    return $mail;
-}
-
-Flight::route("/_forgot", function() {
-    $safePost = filter_input_array(INPUT_POST);
-    check_token($safePost);
-
-    $thismember = R::getRow(
-        'SELECT * FROM user WHERE email = :username',
-        [':username' => $safePost['email']]
-    );
-
-    if (empty($thismember)) {
-        em( "Invalid email address!" );
-        forward();
-    } else {
-
-        if (strtolower($thismember['nick']) != strtolower($safePost['nick'])) {
-            em( "Invalid nickname!" );
-            forward();
-        }
-
-        $reload = R::load("user", $thismember['id']);
-
-        $plainpass = uniqid();
-        $newpass = password_hash($plainpass, PASSWORD_DEFAULT);
-        $reload->pass = $newpass;
-        $update = R::store($reload);
-        $to = $reload->email;
-        $subject = 'New Password for cogdemos.ink';
-        $message = 'Your password for cogdemos.ink has been reset to: ' . $plainpass;
-
-        $mail = configureMail();
-
-        $mail->setFrom('no-reply@cogdemos.ink', 'CoG Demos Ink');
-        $mail->addAddress($to);
-        $mail->Subject = $subject;
-        $mail->Body = $message;
-
-        if ($mail->send()) {
-            sm( "A new password has been sent to your email address." );
-            forward();
-        } else {
-            em( "Error sending email:" . $mail->ErrorInfo);
-            forward();
-        }
-    }
-
-    die("err.forgot");
-});
 
 
 # ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••• [ WIP
