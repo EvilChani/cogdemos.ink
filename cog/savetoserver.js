@@ -58,34 +58,6 @@ function promptSaveName(slotID, slotName) {
 	}
 }	
 
-function promptSaveNameBKUP(slotID, slotName) {
-    var overwriteConfirmed = true;
-        
-    // Check if a save already exists for the selected slot
-    if (slotName !== '') {
-        var confirmMessage = "A save named '" + slotName + "' already exists for Slot " + slotID + ". Do you want to overwrite it?";
-        overwriteConfirmed = confirm(confirmMessage);
-    }
-
-    // If the user confirms overwrite or no save exists
-    if (overwriteConfirmed) {
-        var newSlotName = prompt("Please enter a name for your save:", slotName);
-        if (newSlotName !== null && newSlotName.trim() !== "") {
-            inkSave(slotID, newSlotName); // Call the save function with the new slot name
-        } else {
-            alert("Save name cannot be empty!");
-        }
-    }}
-
-function promptSaveNameOLD(slotID, slotName) {
-	var slotName = prompt("Please enter a name for your save:");
-	if (slotName !== null && slotName.trim() !== "") {
-		inkSave(slotID, slotName); // Corrected to use slotName instead of saveName
-	} else {
-		alert("Save name cannot be empty!");
-	}
-}
-
 // Function to delete an existing save by slot ID
 function deleteSave(slotID, callback) {
     // Perform AJAX request to delete the save
@@ -106,13 +78,6 @@ function inkSave(slotID = 1, slotName)
             alertify.log("Cannot save on an immediate load screen.");return; }
         sendXMLDoc(ink_password, slotID, slotName);
     }
-
-function inkSaveOLD( slotID = 1 )
-	{
-		if( typeof ink_password == 'undefined' )
-			{ alertify.log( "Cannot save on an immediate load screen." );return; }
-		sendXMLDoc( ink_password, slotID );
-	}
 
 function inkLoad( slotID = 1 )
 	{
