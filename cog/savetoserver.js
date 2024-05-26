@@ -28,7 +28,86 @@ function inkLoginLoad()
 		restore_localStorage( ink_password );
 	}
 
-function inkSave( slotID = 1 )
+function promptSaveName(slotID, slotName) {
+	// Check if a save already exists for the selected slot
+	if (slotName !== '') {
+		var confirmMessage = "A save named '" + slotName + "' already exists for Slot " + slotID + ". Do you want to overwrite it?";
+		var overwriteConfirmed = confirm(confirmMessage);
+
+		// If the user confirms overwrite or if no save exists
+		if (overwriteConfirmed) {
+			// Delete existing save before saving the new one
+			deleteSave(slotID, function() {
+				// Callback function to handle save after deletion
+				var newSlotName = prompt("Please enter a name for your save:", slotName);
+				if (newSlotName !== null && newSlotName.trim() !== "") {
+					inkSave(slotID, newSlotName); // Call the save function with the new slot name
+				} else {
+					alert("Save name cannot be empty!");
+				}
+			});
+		}
+	} else {
+		// If no save exists, proceed with saving directly
+		var newSlotName = prompt("Please enter a name for your save:", slotName);
+		if (newSlotName !== null && newSlotName.trim() !== "") {
+			inkSave(slotID, newSlotName); // Call the save function with the new slot name
+		} else {
+			alert("Save name cannot be empty!");
+		}
+	}
+}	
+
+function promptSaveNameBKUP(slotID, slotName) {
+    var overwriteConfirmed = true;
+        
+    // Check if a save already exists for the selected slot
+    if (slotName !== '') {
+        var confirmMessage = "A save named '" + slotName + "' already exists for Slot " + slotID + ". Do you want to overwrite it?";
+        overwriteConfirmed = confirm(confirmMessage);
+    }
+
+    // If the user confirms overwrite or no save exists
+    if (overwriteConfirmed) {
+        var newSlotName = prompt("Please enter a name for your save:", slotName);
+        if (newSlotName !== null && newSlotName.trim() !== "") {
+            inkSave(slotID, newSlotName); // Call the save function with the new slot name
+        } else {
+            alert("Save name cannot be empty!");
+        }
+    }}
+
+function promptSaveNameOLD(slotID, slotName) {
+	var slotName = prompt("Please enter a name for your save:");
+	if (slotName !== null && slotName.trim() !== "") {
+		inkSave(slotID, slotName); // Corrected to use slotName instead of saveName
+	} else {
+		alert("Save name cannot be empty!");
+	}
+}
+
+// Function to delete an existing save by slot ID
+function deleteSave(slotID, callback) {
+    // Perform AJAX request to delete the save
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("DELETE", "deleteSave.php?slotID=" + slotID, true);
+    xmlhttp.onreadystatechange = function() {
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+            // Callback function to handle save deletion completion
+            callback();
+        }
+    };
+    xmlhttp.send();
+}
+	
+function inkSave(slotID = 1, slotName) 
+	{
+        if (typeof ink_password === 'undefined') {
+            alertify.log("Cannot save on an immediate load screen.");return; }
+        sendXMLDoc(ink_password, slotID, slotName);
+    }
+
+function inkSaveOLD( slotID = 1 )
 	{
 		if( typeof ink_password == 'undefined' )
 			{ alertify.log( "Cannot save on an immediate load screen." );return; }
@@ -61,6 +140,17 @@ function inkLoad( slotID = 1 )
 		request.send();
 	}
 
+function updateDropdownContent(slot_id, slot_name) {
+    // Find the slot anchor element by slot ID
+    var slotElement = document.querySelector("#saveMenu a[data-slot-id='" + slot_id + "']");
+        
+    // If the slot element exists, update its content
+    if (slotElement) {
+        var displayText = (slot_name !== '') ? slot_id + ' - ' + slot_name : slot_id;
+        slotElement.innerHTML = "<i class='fa fa-save'></i> " + displayText;
+    }
+}
+
 function loadJSON( path, success, error )
 	{
 		var xhr = new XMLHttpRequest();
@@ -84,7 +174,7 @@ function loadJSON( path, success, error )
 		xhr.send();
 	}
 
-function sendXMLDoc( ink_password, slotID )
+function sendXMLDoc( ink_password, slotID, slotName)
 	{
 		var xmlhttp;
 		try
@@ -110,7 +200,7 @@ function sendXMLDoc( ink_password, slotID )
 		var gameID = this_js_script.attr('data-game');
 		if (typeof gameID === "undefined" )
 			{ alertify.log( "Could not identify game to store save." );return; }
-		url = "https://cogdemos.ink/save/" + gameID + "/" + slotID;
+		url = "https://cogdemos.ink/save/" + gameID + "/" + slotID + "/" + slotName;
 		console.log(url);
 		xmlhttp.open( "POST", url, true );
 		xmlhttp.onreadystatechange = display_data;

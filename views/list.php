@@ -11,7 +11,7 @@
             <div class="row mb-4">
                 <div class="col-md-12 text-center">
 <p class="alert alert-info mb-2"><i class="fa fa-info-circle"></i> This site primarily hosts "work-in-progress" games. The majority of games here are incomplete and unedited.</p>
-<p class="text-muted">CoGDemos.ink is not associated or affiliated with Choice of Games LLC or Hosted Games LLC.<br>
+<p class="text-muted">cogdemos.ink is not associated or affiliated with Choice of Games LLC or Hosted Games LLC.<br>
 If you need support, please message dashingdon on the <u><a href="https://forum.choiceofgames.com/" target="_blank">Choice of Games forum</a></u>.</p>
                 </div>
             </div>

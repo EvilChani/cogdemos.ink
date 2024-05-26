@@ -1,16 +1,16 @@
 //
 // Copyright (c) 2008, 2009 Paul Duncan (paul@pablotron.org)
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,7 +21,7 @@
 //
 
 
-/* 
+/*
  * The contents of gears_init.js; we need this because Chrome supports
  * Gears out of the box, but still requires this constructor.  Note that
  * if you include gears_init.js then this function does nothing.
@@ -31,7 +31,7 @@
   if (window.google && google.gears)
     return;
 
-  // factory 
+  // factory
   var F = null;
 
   // Firefox
@@ -102,7 +102,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
   // wrapper for Array.prototype.indexOf, since IE doesn't have it
   var index_of = (function() {
     if (Array.prototype.indexOf)
-      return function(ary, val) { 
+      return function(ary, val) {
         return Array.prototype.indexOf.call(ary, val);
       };
     else
@@ -132,14 +132,14 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
   };
 
   C = {
-    /* 
+    /*
      * Backend search order.
-     * 
+     *
      * Note that the search order is significant; the backends are
      * listed in order of capacity, and many browsers
      * support multiple backends, so changing the search order could
      * result in a browser choosing a less capable backend.
-     */ 
+     */
     search_order: [
       // TODO: air
       'cefStorage',
@@ -149,12 +149,12 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
       'iosStorage',
       'localChromeStorage',
       'androidStorage',
-      'whatwg_db', 
+      'whatwg_db',
       'localstorage',
-      'globalstorage', 
+      'globalstorage',
       'cookie',
       'gears',
-      'ie', 
+      'ie',
       'flash'
     ],
 
@@ -163,11 +163,11 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
     // list of backend methods
     methods: [
-      'init', 
-      'get', 
-      'set', 
-      'remove', 
-      'load', 
+      'init',
+      'get',
+      'set',
+      'remove',
+      'load',
       'save'
       // TODO: clear method?
     ],
@@ -176,12 +176,12 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
     sql: {
       version:  '1', // db schema version
 
-      // XXX: the "IF NOT EXISTS" is a sqlite-ism; fortunately all the 
+      // XXX: the "IF NOT EXISTS" is a sqlite-ism; fortunately all the
       // known DB implementations (safari and gears) use sqlite
       create:   "CREATE TABLE IF NOT EXISTS persist_data (k TEXT UNIQUE NOT NULL PRIMARY KEY, v TEXT NOT NULL)",
       get:      "SELECT v FROM persist_data WHERE k = ?",
       set:      "INSERT INTO persist_data(k, v) VALUES (?, ?)",
-      remove:   "DELETE FROM persist_data WHERE k = ?" 
+      remove:   "DELETE FROM persist_data WHERE k = ?"
     },
 
     // default flash configuration
@@ -200,11 +200,95 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
       args: {
         autostart: true
       }
-    } 
+    }
   };
 
   // built-in backends
   B = {
+    idb: {
+      size: -1,
+
+      test: function () {
+        return !!window.indexedDB && !window.idbFailed;
+      },
+
+      methods: {
+        key: function (key) {
+          return esc(this.name) + esc(key);
+        },
+
+        init: function () {
+          const openRequest = indexedDB.open(this.name, 1)
+
+          openRequest.onupgradeneeded = (event) => {
+            // database did not previously exist or is an older version
+            const db = this.db = openRequest.result
+            if (event.oldVersion < 1) {
+              // New database, create object store for this game
+              db.createObjectStore("persist_data", { keyPath: "key" })
+            }
+          }
+
+          openRequest.onerror = (event) => {
+            Persist.remove("idb")
+          }
+        },
+
+        get: function (key, fn, scope) {
+          if (fn) {
+            const objectStore = this.db
+              .transaction("persist_data", "readonly")
+              .objectStore("persist_data");
+            const request = objectStore.get(esc(key));
+            request.onerror = () => {
+              fn.call(scope || this, false, undefined)
+            };
+            request.onsuccess = () => {
+              fn.call(scope || this, true, request.result.value)
+            }
+          }
+        },
+
+        set: function (key, val, fn, scope) {
+          const objectStore = this.db
+            .transaction("persist_data", "readwrite")
+            .objectStore("persist_data");
+          const request = objectStore.put({ key: esc(key), value: val })
+          request.onerror = () => {
+            if (fn)
+              fn.call(scope || this, false, val);
+          };
+
+          request.onsuccess = () => {
+            if (fn)
+              fn.call(scope || this, true, val)
+          }
+        },
+
+        remove: function (key, fn, scope) {
+          const objectStore = this.db
+            .transaction("persist_data", "readwrite")
+            .objectStore("persist_data");
+
+          const doRemove = (v, success) => {
+            const request = objectStore.delete(esc(key));
+            request.onerror = () => {
+              if (fn)
+                fn.call(scope || this, false, v)
+            }
+            request.onsuccess = () => {
+              if (fn)
+                fn.call(scope || this, success, v)
+            }
+          }
+
+          const getRequest = objectStore.get(esc(key));
+          getRequest.onerror = () => { doRemove(undefined, false) };
+          getRequest.onsuccess = () => { doRemove(getRequest.result.value, true) };
+        }
+      }
+    },
+
     // gears db backend
     // (src: http://code.google.com/apis/gears/api_database.html)
     gears: {
@@ -288,7 +372,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
             // exec set query
             t.execute(sql, [key, val]).close();
-            
+
             // run callback (TODO: get old value)
             if (fn)
               fn.call(scope || this, true, val);
@@ -327,9 +411,9 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
             if (fn)
               fn.call(scope || this, is_valid, val);
           });
-        } 
+        }
       }
-    }, 
+    },
 
     cefStorage: {
       size:   -1,
@@ -403,7 +487,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
       size:   200 * 1024,
 
       test: function() {
-        var name = 'PersistJS Test', 
+        var name = 'PersistJS Test',
             desc = 'Persistent database test.';
 
         // test for openDatabase
@@ -431,7 +515,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
                 this.db_created = true;
               });
             }, empty); // trap exception
-          } 
+          }
 
           // execute transaction
           this.db.transaction(fn);
@@ -440,10 +524,10 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
         init: function() {
           // create database handle
           this.db = openDatabase(
-            this.name, 
-            C.sql.version, 
+            this.name,
+            C.sql.version,
             this.o.about || ("Persistent storage for " + this.name),
-            this.o.size || B.whatwg_db.size 
+            this.o.size || B.whatwg_db.size
           );
         },
 
@@ -500,7 +584,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
               // exec get query
               t.executeSql(get_sql, [key], function(t, r) {
                 if (r.rows.length > 0) {
-                  // key exists, get value 
+                  // key exists, get value
                   var val = r.rows.item(0)['v'];
 
                   // exec remove query
@@ -521,10 +605,10 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
               t.executeSql(sql, [key]);
             }
           });
-        } 
+        }
       }
-    }, 
-    
+    },
+
     // globalstorage backend (globalStorage, FF2+, IE8+)
     // (src: http://developer.mozilla.org/en/docs/DOM:Storage#globalStorage)
     // https://developer.mozilla.org/En/DOM/Storage
@@ -584,10 +668,10 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
           if (fn)
             fn.call(scope || this, (val !== null), val);
-        } 
+        }
       }
-    }, 
-    
+    },
+
     // localstorage backend (globalStorage, FF2+, IE8+)
     // (src: http://www.whatwg.org/specs/web-apps/current-work/#the-localstorage)
     // also http://msdn.microsoft.com/en-us/library/cc197062(VS.85).aspx#_global
@@ -647,9 +731,9 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
           if (fn)
             fn.call(scope || this, (val !== null), val);
-        } 
+        }
       }
-    }, 
+    },
 
     // chrome packaged app storage
     // http://developer.chrome.com/stable/apps/storage.html
@@ -693,7 +777,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
           var out = {};
           out[key] = val;
           if (fn) {
-            scope = scope || this;  
+            scope = scope || this;
             this.store.set(out, function(){
               fn.call(scope, true, val);
             });
@@ -719,10 +803,10 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
           } else {
             this.store.remove(key);
           }
-        } 
+        }
       }
-    }, 
-    
+    },
+
     // DGF Fake local storage
     androidStorage: {
       // (unknown?)
@@ -780,9 +864,9 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
           if (fn)
             fn.call(scope || this, (val !== null), val);
-        } 
+        }
       }
-    }, 
+    },
 
     // DGF iOS managed storage
     iosStorage: {
@@ -882,9 +966,9 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
             if (fn) fn.call(scope || this, (val !== null), val);
           }
           this.callIos("storagerem", key + " " + nonce);
-        } 
+        }
       }
-    }, 
+    },
 
     // DGF OSX managed storage
     macStorage: {
@@ -940,9 +1024,9 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
           if (fn)
             fn.call(scope || this, (val !== null), val);
-        } 
+        }
       }
-    }, 
+    },
 
     // DGF Old win app managed storage
     winOldStorage: {
@@ -998,9 +1082,9 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
           if (fn)
             fn.call(scope || this, (val !== null), val);
-        } 
+        }
       }
-    }, 
+    },
 
       // DGF WinStore managed storage
     winStoreStorage: {
@@ -1132,7 +1216,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
         var el = document.createElement('div');
 
         // set element properties
-        // http://msdn.microsoft.com/en-us/library/ms531424(VS.85).aspx 
+        // http://msdn.microsoft.com/en-us/library/ms531424(VS.85).aspx
         // http://www.webreference.com/js/column24/userdata.html
         el.id = id;
         el.style.display = 'none';
@@ -1178,7 +1262,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
         set: function(key, val, fn, scope) {
           // expand key
           key = esc(key);
-          
+
           // set attribute
           this.el.setAttribute(key, val);
 
@@ -1229,7 +1313,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
     cookie: {
       delim: ':',
 
-      // 4k limit (low-ball this limit to handle browser weirdness, and 
+      // 4k limit (low-ball this limit to handle browser weirdness, and
       // so we don't hose session cookies)
       size: 4000,
 
@@ -1246,7 +1330,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
         get: function(key, fn, scope) {
           var val;
 
-          // expand key 
+          // expand key
           key = this.key(key);
 
           // get value
@@ -1258,7 +1342,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
         },
 
         set: function(key, val, fn, scope) {
-          // expand key 
+          // expand key
           key = this.key(key);
 
           // save value
@@ -1272,7 +1356,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
         remove: function(key, val, fn, scope) {
           var val;
 
-          // expand key 
+          // expand key
           key = this.key(key);
 
           // remove cookie
@@ -1281,7 +1365,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
           // call fn
           if (fn)
             fn.call(scope || this, val != null, val);
-        } 
+        }
       }
     },
 
@@ -1387,7 +1471,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
     var i, l, b, key, fns = C.methods, keys = C.search_order;
 
     // set all functions to the empty function
-    for (i = 0, l = fns.length; i < l; i++) 
+    for (i = 0, l = fns.length; i < l; i++)
       P.Store.prototype[fns[i]] = empty;
 
     // clear type and size
@@ -1475,18 +1559,18 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
       // get domain (XXX: does this localdomain fix work?)
       o.domain = o.domain || location.host || 'localhost';
-      
+
       // strip port from domain (XXX: will this break ipv6?)
       o.domain = o.domain.replace(/:\d+$/, '')
 
       // append localdomain to domains w/o '."
       // (see https://bugzilla.mozilla.org/show_bug.cgi?id=357323)
-      // (file://localhost/ works, see: 
+      // (file://localhost/ works, see:
       // https://bugzilla.mozilla.org/show_bug.cgi?id=469192)
-/* 
+/*
  *       if (!o.domain.match(/\./))
  *         o.domain += '.localdomain';
- */ 
+ */
 
       this.o = o;
 
@@ -1498,7 +1582,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
 
       // call init function
       this.init();
-    } 
+    }
   };
 
   // init persist
