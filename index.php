@@ -335,55 +335,82 @@ die( "err.load" ); });
 
 
 # ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••• [ SAVE POST
-Flight::route( "POST /save/@game_id/@slot_id" , function( $game_id, $slot_id ){
+Flight::route("POST /save/@game_id/@slot_id/@slot_name", function($game_id, $slot_id, $slot_name) {
 
-	$user_id = $_SESSION["memberlog"];
+    $user_id = $_SESSION["memberlog"];
 
-	$safePost = filter_input_array( INPUT_POST );
+    $safePost = filter_input_array(INPUT_POST);
 
-	$status = $safePost["status"];
+    $status = $safePost["status"];
 
-	$ob = json_decode( $status );
-	if( $ob === null )
-		{ scuttle( "Bad JSON" ); }
+    $ob = json_decode($status);
+    if ($ob === null) {
+        scuttle("Bad JSON");
+    }
 
-	$prev = R::getRow(
-			"SELECT * FROM save WHERE user_id = :uid AND game_id = :gid AND slot_id = :sid", 
-			[ ":uid" => $user_id, ":gid" => $game_id, ":sid" => $slot_id ]
-		);
+    $prev = R::getRow(
+        "SELECT * FROM save WHERE user_id = :uid AND game_id = :gid AND slot_id = :sid",
+        [":uid" => $user_id, ":gid" => $game_id, ":sid" => $slot_id]
+    );
 
-	if( empty( $prev ) )
-		{
-			sm( "prev empty -- new save" );
-			$newsave = R::dispense( "save" );
-			$newsave->user_id = $user_id;
-			$newsave->game_id = $game_id;
-			$newsave->slot_id = $slot_id;
-			$newsave->state = $_POST["status"];
-			return R::store( $newsave );
-		}
-	else
-		{
-			sm( "prev found -- old save" );
-			if( $prev['id'] == 0 || $prev['user_id'] != $_SESSION["memberlog"] )
-				{ http_response_code(404);exit(); }
+    if (empty($prev)) {
+        sm("prev empty -- new save");
+        $newsave = R::dispense("save");
+        $newsave->user_id = $user_id;
+        $newsave->game_id = $game_id;
+        $newsave->slot_id = $slot_id;
+        $newsave->slot_name = $slot_name; // Added slot_name assignment
+        $newsave->state = $_POST["status"];
+        return R::store($newsave);
+    } else {
+        sm("prev found -- old save");
+        if ($prev['id'] == 0 || $prev['user_id'] != $_SESSION["memberlog"]) {
+            http_response_code(404);
+            exit();
+        }
 
-			$save = R::load( "save" , $prev['id'] );
+        $save = R::load("save", $prev['id']);
 
-			if( empty( $save ) )
-				{ return false; }
-			else
-				{
-					$save->state = $safePost["status"];
-					return R::store( $save );
-				}
-		}
+        if (empty($save)) {
+            return false;
+        } else {
+            $save->state = $safePost["status"];
+            return R::store($save);
+        }
+    }
 
-	exit();
+    exit();
 
-die( "err.save" ); });
+    die("err.save");
+});
 # ]
 
+
+# ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••• [ DELETE POST
+Flight::route('DELETE /deleteSave/@slotID', function($slotID) {
+    // Check if the slot ID is provided
+    if (!empty($slotID)) {
+        // Find the save with the given slot ID
+        $save = R::findOne('save', 'slot_id = ?', [$slotID]);
+
+        // If a save with the given slot ID exists, delete it
+        if ($save) {
+            R::trash($save);
+            // Respond with success message or appropriate status code
+            Flight::json(["message" => "Save deleted successfully"]);
+        } else {
+            // Respond with error message or appropriate status code if no save found
+            Flight::halt(404, "Save not found");
+        }
+    } else {
+        // Respond with error message or appropriate status code if slot ID is missing
+        Flight::halt(400, "Slot ID parameter is missing");
+    }
+exit();
+
+die("err.save");
+});
+# ]
 
 
 # ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••• [ DASHBOARD
@@ -1430,6 +1457,7 @@ Flight::route( "/_create" , function(){
 			'.htaccess',
 			'favicon.ico',
 			'index.php',
+			'index.html',
 			'mygame/index.php',
 			'mygame/scenes/index.php'
 		];

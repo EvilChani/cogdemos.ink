@@ -20,7 +20,7 @@
             </nav>
             <div class="credits ml-auto">
               <span class="copyright">
-                &copy;<?=date("Y");?> CoGDemos.ink<br>All Rights Reserved
+                &copy;<?=date("Y");?> cogdemos.ink<br>All Rights Reserved
               </span>
             </div>
           </div>

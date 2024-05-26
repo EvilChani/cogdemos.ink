@@ -146,33 +146,68 @@ navBarToggle.addEventListener('click', function () {
     <button id="bugButton" onclick="reportBug()" class="spacedLink" style="display: none">Report Bug</button>
     <button id="menuButton" onclick="textOptionsMenu()" class="spacedLink">Settings</button>
 	<?php if(!empty( $_SESSION["memberlog"] ) ){ ?>
-	<?php if( $thisgame['saveallowed'] || $thisgame['user_id'] == $_SESSION["memberlog"] ) { ?>
-		<div class="dropdown">
-			<button onclick="dropDown( 'saveMenu' )" class="dropbtn">Save</button>
-			<div id="saveMenu" class="dropdown-content">
-				<a href="javascript:void(0)" onclick="inkSave(1);"><i class="fa fa-save"></i> Slot 1</a>
-				<a href="javascript:void(0)" onclick="inkSave(2);"><i class="fa fa-save"></i> Slot 2</a>
-				<a href="javascript:void(0)" onclick="inkSave(3);"><i class="fa fa-save"></i> Slot 3</a>
-				<a href="javascript:void(0)" onclick="inkSave(4);"><i class="fa fa-save"></i> Slot 4</a>
-				<a href="javascript:void(0)" onclick="inkSave(5);"><i class="fa fa-save"></i> Slot 5</a>
-				<a href="javascript:void(0)" onclick="inkSave(6);"><i class="fa fa-save"></i> Slot 6</a>
-			</div>
+	<?php if ($thisgame['saveallowed'] || $thisgame['user_id'] == $_SESSION["memberlog"]) { 
+    // Define the total number of slots
+    $total_slots = 6;
+
+    // Fetch saved slots
+    $saved_slots = R::findAll('save');
+
+    // Initialize an array to track saved slots
+    $saved_slot_ids = array();
+
+    // Loop through saved slots to extract IDs
+    foreach ($saved_slots as $slot) {
+        if (!empty($slot->state)) {
+            $saved_slot_ids[$slot->slot_id] = $slot->slot_name; // Store ID and name if state is not empty
+        }
+    }
+
+    // Start the dropdown menu
+    echo '<div class="dropdown">';
+    echo '<button onclick="dropDown(\'saveMenu\')" class="dropbtn">Save</button>';
+    echo '<div id="saveMenu" class="dropdown-content">';
+	echo '<a href="javascript:void(0)" onclick="updateDropdownContent(' . $slot_id . ', \'' . $slot_name . '\');"><i class="fa fa-save"></i> Slot ' . $slot_id . '</a>';
+
+    // Loop through all possible slot IDs
+    for ($i = 1; $i <= $total_slots; $i++) {
+        // Check if the current slot is saved or not
+        if (array_key_exists($i, $saved_slot_ids)) {
+            // If saved, display the slot information
+            $slot_name = $saved_slot_ids[$i];
+            $display_text = "$i - $slot_name";
+            echo "<a href='javascript:void(0)' onclick='promptSaveName($i);'><i class='fa fa-save'></i> $display_text</a>";
+        } else {
+            // If not saved, display the slot ID as available
+            echo "<a href='javascript:void(0)' onclick='promptSaveName($i);'><i class='fa fa-save'></i> Slot $i</a>";
+        }
+    } }
+	// Close the dropdown menu
+    echo '</div>';
+    echo '</div>';
+}
+?>
+	<div class="dropdown">
+		<button onclick="dropDown( 'loadMenu' )" class="dropbtn">Load</button>
+		<div id="loadMenu" class="dropdown-content">
+			<?php
+			for ($i = 1; $i <= 6; $i++) {
+				$slotName = ''; // Default slot name
+				// Check if there is a save in this slot
+				// You need to replace the conditions and variables according to your database structure
+				if (isset($thisgame['saves'][$i])) {
+					$slotName = $thisgame['saves'][$i]['slot_name']; // If there is a save, use slot_name
+				}
+				?>
+				<a href="javascript:void(0)" onclick="inkLoad(<?php echo $i; ?>);">
+					<i class="fa fa-angle-right"></i> <?php echo $slotName !== '' ? $slotName : 'Slot ' . $i; ?>
+				</a>
+			<?php } ?>
+			<?php if ($_SESSION["memberlog"] == $thisgame['user_id']) { ?>
+				<a href="javascript:void(0)" onclick="inkLoad(0);"><i class="fa fa-code"></i> DevSlot</a>
+			<?php } ?>
 		</div>
-		<div class="dropdown">
-			<button onclick="dropDown( 'loadMenu' )" class="dropbtn">Load</button>
-			<div id="loadMenu" class="dropdown-content">
-				<a href="javascript:void(0)" onclick="inkLoad(1);"><i class="fa fa-angle-right"></i> Slot 1</a>
-				<a href="javascript:void(0)" onclick="inkLoad(2);"><i class="fa fa-angle-right"></i> Slot 2</a>
-				<a href="javascript:void(0)" onclick="inkLoad(3);"><i class="fa fa-angle-right"></i> Slot 3</a>
-				<a href="javascript:void(0)" onclick="inkLoad(4);"><i class="fa fa-angle-right"></i> Slot 4</a>
-				<a href="javascript:void(0)" onclick="inkLoad(5);"><i class="fa fa-angle-right"></i> Slot 5</a>
-				<a href="javascript:void(0)" onclick="inkLoad(6);"><i class="fa fa-angle-right"></i> Slot 6</a>
-				<?php if( $_SESSION["memberlog"] == $thisgame['user_id'] ){ ?>
-					<a href="javascript:void(0)" onclick="inkLoad(0);"><i class="fa fa-code"></i> DevSlot</a>
-				<?php } ?>
-			</div>
-		</div>
-	<?php } } ?>
+	</div>
 </div>
 </div>
 <div id="main">

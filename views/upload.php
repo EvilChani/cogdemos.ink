@@ -79,7 +79,7 @@
 		<div class="note text-muted my-2">Your account has no filesize restrictions. You may only upload a maximum of 20 files at one time.</div>
     <?php } ?>
 
-    <p class="alert text-muted"><i>The title picture that shows for your game on CoGDemos.ink listings can be changed by uploading a file named <strong>dashpic.jpg</strong> The dashpic.jpg image will be cropped to <b>320x180</b> pixels.</i></p>
+    <p class="alert text-muted"><i>The title picture that shows for your game on cogdemos.ink listings can be changed by uploading a file named <strong>dashpic.jpg</strong> The dashpic.jpg image will be cropped to <b>320x180</b> pixels.</i></p>
 
         <div class="row">
             <div class="col-md-6 col-sm-12">
