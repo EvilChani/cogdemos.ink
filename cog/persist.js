@@ -228,6 +228,10 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
               db.createObjectStore("persist_data", { keyPath: "key" })
             }
           }
+
+          openRequest.onerror = (event) => {
+            Persist.remove("idb")
+          }
         },
 
         get: function (key, fn, scope) {
@@ -277,7 +281,7 @@ return r;},version:'0.2.1',enabled:false};me.enabled=alive.call(me);return me;}(
                 fn.call(scope || this, success, v)
             }
           }
-          
+
           const getRequest = objectStore.get(esc(key));
           getRequest.onerror = () => { doRemove(undefined, false) };
           getRequest.onsuccess = () => { doRemove(getRequest.result.value, true) };
