@@ -156,6 +156,7 @@ CREATE TABLE `save` (
   `game_id` int(11) NOT NULL,
   `slot_id` int(11) NOT NULL,
   `state` longtext NOT NULL
+  `slot_name` varchar(100) DEFAULT NULL,
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
